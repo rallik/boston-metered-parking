@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import mapboxgl from 'mapbox-gl/dist/mapbox-gl-csp';
 import MapboxWorker from 'worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import './site.css'
+import './site.scss'
 
 const KEY = process.env.REACT_APP_MB_KEY;
 
