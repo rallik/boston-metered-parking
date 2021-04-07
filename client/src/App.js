@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import mapboxgl from 'mapbox-gl/dist/mapbox-gl-csp';
 import MapboxWorker from 'worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker';
 import meterdata from './data/Parking_Meters.geojson';
+import neighborhooddata from './data/Boston_Neighborhoods.geojson';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import './site.scss';
 
@@ -31,7 +32,10 @@ const Map = () => {
                 clusterRadius: 50,
             })
             
-
+        map.addSource('neighborhoods', {
+            type: 'geojson',
+            data: neighborhooddata,
+        })
 
             map.addLayer({
                 id: 'meterclusters',
