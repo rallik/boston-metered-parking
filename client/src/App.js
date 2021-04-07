@@ -2,9 +2,9 @@ import React, { useRef, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import mapboxgl from 'mapbox-gl/dist/mapbox-gl-csp';
 import MapboxWorker from 'worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker';
-import data from './data/Parking_Meters.geojson'
+import meterdata from './data/Parking_Meters.geojson';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import './site.scss'
+import './site.scss';
 
 const KEY = process.env.REACT_APP_MB_KEY;
 
@@ -25,11 +25,13 @@ const Map = () => {
         map.on('load', () => {
             map.addSource('meters', {
                 type: 'geojson',
-                data: data,
+                data: meterdata,
                 cluster: true,
                 clusterMaxZoom: 17,
                 clusterRadius: 50,
             })
+            
+
 
             map.addLayer({
                 id: 'meterclusters',
