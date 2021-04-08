@@ -58,24 +58,6 @@ const Map = () => {
                 }
             })
 
-            // map.addSource('loc-2', {
-            //     type: 'vector',
-            //     url: 'mapbox://mapbox.boundaries-loc2-v3'
-            // });
-            
-            // map.addLayer({
-            //     id: 'boston-boundry',
-            //     type: 'line',
-            //     source: 'loc-2',
-            //     'source-layer': 'loc2',
-            //     layout: {
-            //         'line-join': 'round',
-            //         'line-cap': 'round'
-            //     },
-            //     filter: ['==', 'id', '2507000']
-
-            // })
-
             map.addLayer({
                 id: 'meterclusters',
                 type: 'circle',
