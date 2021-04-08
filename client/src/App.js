@@ -16,11 +16,19 @@ const Map = () => {
     const [zoom, setZoom] = useState(13);
 
     useEffect(() => {
+        //[-71.27, 42.2258],
+        //[-70.8703, 42.4348]
+        const bounds = [
+            [-71.27, 42.2258],
+            [-70.8703, 42.4348]
+        ]
+
         const map = new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/streets-v11',
             center: [lng, lat],
-            zoom: zoom
+            zoom: zoom,
+            maxBounds: bounds
         });
 
         map.on('load', () => {
@@ -32,10 +40,41 @@ const Map = () => {
                 clusterRadius: 50,
             })
             
-        map.addSource('neighborhoods', {
-            type: 'geojson',
-            data: neighborhooddata,
-        })
+            map.addSource('neighborhoods', {
+                type: 'geojson',
+                data: neighborhooddata,
+            })
+
+            map.addLayer({
+                id: 'neighborhoods',
+                type: 'line',
+                source: 'neighborhoods',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-width': 1.5
+                }
+            })
+
+            // map.addSource('loc-2', {
+            //     type: 'vector',
+            //     url: 'mapbox://mapbox.boundaries-loc2-v3'
+            // });
+            
+            // map.addLayer({
+            //     id: 'boston-boundry',
+            //     type: 'line',
+            //     source: 'loc-2',
+            //     'source-layer': 'loc2',
+            //     layout: {
+            //         'line-join': 'round',
+            //         'line-cap': 'round'
+            //     },
+            //     filter: ['==', 'id', '2507000']
+
+            // })
 
             map.addLayer({
                 id: 'meterclusters',
