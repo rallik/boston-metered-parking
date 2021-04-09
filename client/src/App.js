@@ -11,11 +11,15 @@ const KEY = process.env.REACT_APP_MB_KEY;
 
 const Map = () => {
     const mapContainer = useRef();
-    const [lng, setLng] = useState(-71.0589);
+    const [lng, setLong] = useState(-71.0589);
     const [lat, setLat] = useState(42.3601);
     const [zoom, setZoom] = useState(13);
 
+    
+
     useEffect(() => {
+        
+
         //[-71.27, 42.2258],
         //[-70.8703, 42.4348]
         const bounds = [
@@ -96,13 +100,28 @@ const Map = () => {
                 });
         })
 
+        const geolocate = new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true
+            },
+                trackUserLocation: true
+            });
         
+        map.addControl(geolocate);
+        
+
+        geolocate.on('error', () => console.log('An error event has occurred.'));
+        geolocate.on('outofmaxbounds', () => {
+            console.log('An outofmaxbounds event has occurred.')
+        })
 
         return () => map.remove();
         }, []);
         
     return (
-        <div className="map-container" ref={mapContainer}></div>
+        <React.Fragment>
+            <div style={{zIndex: '0'}} className="map-container" ref={mapContainer}></div>
+        </React.Fragment>
     );
 
 }
@@ -115,7 +134,7 @@ const App = () => {
 
     return (
         <React.Fragment>
-            <Map/>
+            <Map />
         </React.Fragment>
     )
 }
