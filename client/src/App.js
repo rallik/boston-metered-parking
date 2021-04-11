@@ -2,9 +2,11 @@ import React, { useRef, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import mapboxgl from 'mapbox-gl/dist/mapbox-gl-csp';
 import MapboxWorker from 'worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker';
+import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import meterdata from './data/Parking_Meters.geojson';
 import neighborhooddata from './data/Boston_Neighborhoods.geojson';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import './site.scss';
 
 const KEY = process.env.REACT_APP_MB_KEY;
@@ -112,6 +114,12 @@ const Map = () => {
         
         map.addControl(geolocate);
         
+        const geocoder = new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            mapboxgl: mapboxgl
+        })
+        
+        map.addControl(geocoder, 'bottom-left')
 
         geolocate.on('error', () => console.log('An error event has occurred.'));
         geolocate.on('outofmaxbounds', () => {
@@ -137,7 +145,7 @@ const App = () => {
 
     return (
         <React.Fragment>
-            <Map />
+            <Map {...mapboxgl}/>
         </React.Fragment>
     )
 }
