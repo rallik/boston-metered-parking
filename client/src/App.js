@@ -100,6 +100,9 @@ const Map = () => {
                 });
         })
 
+        const controls = new mapboxgl.NavigationControl()
+        map.addControl(controls, 'top-left')
+
         const geolocate = new mapboxgl.GeolocateControl({
             positionOptions: {
                 enableHighAccuracy: true
