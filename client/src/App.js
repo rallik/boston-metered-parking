@@ -112,19 +112,32 @@ const Map = () => {
                 trackUserLocation: true
             });
         
-        map.addControl(geolocate);
+        map.addControl(geolocate, 'top-left');
         
         const geocoder = new MapboxGeocoder({
             accessToken: mapboxgl.accessToken,
             mapboxgl: mapboxgl
         })
         
-        map.addControl(geocoder, 'bottom-left')
+        map.addControl(geocoder, 'top-right')
 
         geolocate.on('error', () => console.log('An error event has occurred.'));
         geolocate.on('outofmaxbounds', () => {
             console.log('An outofmaxbounds event has occurred.')
         })
+
+        const scale = new mapboxgl.ScaleControl({
+            maxWidth: 100,
+            unit: 'imperial'
+        });
+
+        map.addControl(scale)
+
+        map.on('idle', () => {
+            const center = map.getCenter();
+            console.log(center)
+        })
+        
 
         return () => map.remove();
         }, []);
