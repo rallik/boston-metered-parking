@@ -113,12 +113,26 @@ const Map = (props) => {
             });
         })
 
+        const mapMarkers = [];
+
+
         const controls = new mapboxgl.NavigationControl()
         map.addControl(controls, 'top-left')
 
         const geocoder = new MapboxGeocoder({
             accessToken: accessToken,
-            mapboxgl: mapboxgl
+            mapboxgl: mapboxgl,
+            zoom: 17
+        })
+
+        geocoder.on('result', (e) => {
+            const geocodeMeterFeatures = map.queryRenderedFeatures({
+                layers: ['meterclusters']
+            });
+            if (!geocodeMeterFeatures.length) {
+                console.log('nothin here');
+            }
+            console.log(geocodeMeterFeatures)
         })
         
         map.addControl(geocoder, 'top-right')
@@ -149,7 +163,6 @@ const Map = (props) => {
 
         map.addControl(scale)
 
-        const mapMarkers = [];
 
         map.on('dblclick', (e) => {
             if (mapMarkers.length > 0) {
@@ -162,7 +175,10 @@ const Map = (props) => {
             markerUser.addTo(map);
             mapMarkers.push(markerUser)
         
-            map.setCenter(e.lngLat)
+            map.flyTo({
+                center: e.lngLat,
+                zoom: 19
+            })
             
             const wh = 300;
 
@@ -173,18 +189,34 @@ const Map = (props) => {
             if (!meterFeatures.length) {
                 console.log('nothin here');
             }
-                 
-            const meterFeature = meterFeatures[0] || false;
+            
+            console.log('mf',meterFeatures)
+
+            // const meterFeature = meterFeatures[0] || false;
+            console.log(e)
             console.log(e.point)
-            console.log(meterFeature)
+            // console.log(meterFeature)
 
             const markerMeter = new mapboxgl.Marker({
                 color: "#00FF00",
             })
-            if (!meterFeature.properties.cluster) {
-                markerMeter.setLngLat([meterFeature.properties.LONGITUDE, meterFeature.properties.LATITUDE])
-                markerMeter.addTo(map);
-                mapMarkers.push(markerMeter)
+            if (meterFeatures.id) {
+                const clusterMeterFeatures = map.getClusterChildren(
+                    meterFeatures.id, (err, features) => {
+                        if (features) {
+                            return features;
+                        }
+                        if (err) {
+                            console.error(err)
+                            return null;
+                        }
+                });
+                console.log(clusterMeterFeatures)
+            } else {
+                console.log('not a cluster')
+                // markerMeter.setLngLat([meterFeature.properties.LONGITUDE, meterFeature.properties.LATITUDE])
+                // markerMeter.addTo(map);
+                // mapMarkers.push(markerMeter)
             }
          })
        
