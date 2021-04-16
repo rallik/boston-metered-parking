@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "dependencies": {
     "@mapbox/mapbox-gl-geocoder": "^4.7.0",
+    "@turf/helpers": "^6.3.0",
+    "@turf/nearest-point": "^6.3.0",
     "dotenv": "^8.2.0",
     "mapbox-gl": "^2.2.0",
     "react": "^17.0.0",
