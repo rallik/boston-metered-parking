@@ -190,7 +190,9 @@ const Map = (props) => {
                 console.log('nothin here');
             }
             
-            console.log('mf',meterFeatures)
+            console.log('mf : ',meterFeatures)
+            console.log('mfl : ',meterFeatures.length)
+
 
             // const meterFeature = meterFeatures[0] || false;
             console.log(e)
@@ -200,7 +202,7 @@ const Map = (props) => {
             const markerMeter = new mapboxgl.Marker({
                 color: "#00FF00",
             })
-            if (meterFeatures.id) {
+            if (meterFeatures.id ) {
                 const clusterMeterFeatures = map.getClusterChildren(
                     meterFeatures.id, (err, features) => {
                         if (features) {

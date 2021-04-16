@@ -12,6 +12,15 @@ const App = () => {
     mapboxgl.workerClass = MapboxWorker;
     mapboxgl.accessToken = KEY;
 
+    if (!mapboxgl.supported()) {
+        return (
+            <div>
+                
+                {alert('Your browser does not support Mapbox GL')};
+                
+            </div>
+        );
+    }
 
     return (
         <React.Fragment>
