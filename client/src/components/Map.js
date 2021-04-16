@@ -175,10 +175,10 @@ const Map = (props) => {
             markerUser.addTo(map);
             mapMarkers.push(markerUser)
         
-            map.flyTo({
-                center: e.lngLat,
-                zoom: 19
-            })
+            // map.flyTo({
+            //     center: e.lngLat,
+            //     zoom: 19
+            // })
             
             const wh = 300;
 
