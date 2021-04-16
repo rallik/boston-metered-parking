@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl/dist/mapbox-gl-csp';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import meterdata from '../data/Parking_Meters.geojson';
 import neighborhooddata from '../data/Boston_Neighborhoods.geojson';
+import findNearestMeter from '../utils/findNearestPoint'
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../site.scss';
@@ -47,24 +48,6 @@ const Map = (props) => {
                 clusterRadius: 50
             })
             
-            map.addSource('neighborhoods', {
-                type: 'geojson',
-                data: neighborhooddata,
-            })
-
-            map.addLayer({
-                id: 'neighborhoods',
-                type: 'line',
-                source: 'neighborhoods',
-                layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                paint: {
-                    'line-width': 1.5
-                }
-            })
-
             map.addLayer({
                 id: 'meterclusters',
                 type: 'circle',
@@ -103,6 +86,24 @@ const Map = (props) => {
                 'text-size': 12
                 }
             });
+
+            map.addSource('neighborhoods', {
+                type: 'geojson',
+                data: neighborhooddata,
+            })
+
+            map.addLayer({
+                id: 'neighborhoods',
+                type: 'line',
+                source: 'neighborhoods',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-width': 1.5
+                }
+            })
             
             map.addSource('nearest-meter', {
                 type: 'geojson',
@@ -163,11 +164,16 @@ const Map = (props) => {
 
         map.addControl(scale)
 
+        let clusterMeterFeatures = [];
+
 
         map.on('dblclick', (e) => {
             if (mapMarkers.length > 0) {
                 mapMarkers.forEach((m) => m.remove()) 
             }
+
+            const lngLat = [e.lngLat.lng, e.lngLat.lat]
+
             const markerUser = new mapboxgl.Marker({
                 color: "#76FF05",
             })
@@ -175,24 +181,26 @@ const Map = (props) => {
             markerUser.addTo(map);
             mapMarkers.push(markerUser)
         
-            // map.flyTo({
-            //     center: e.lngLat,
-            //     zoom: 19
-            // })
+            map.flyTo({
+                center: lngLat,
+                zoom: 19
+            })
             
             const wh = 300;
 
             const querybounds = [[e.point.x - wh, e.point.y - wh], [e.point.x + wh, e.point.y + wh]]
             const meterFeatures = map.queryRenderedFeatures({
-                layers: ['meterclusters']
-            });
+                layers: ['meterclusters'],
+                // filter: {}
+            })
+
             if (!meterFeatures.length) {
                 console.log('nothin here');
             }
             
             console.log('mf : ',meterFeatures)
             console.log('mfl : ',meterFeatures.length)
-
+            console.log('mfeq : ',meterFeatures[0] == meterFeatures[1])
 
             // const meterFeature = meterFeatures[0] || false;
             console.log(e)
@@ -202,24 +210,55 @@ const Map = (props) => {
             const markerMeter = new mapboxgl.Marker({
                 color: "#00FF00",
             })
-            if (meterFeatures.id ) {
-                const clusterMeterFeatures = map.getClusterChildren(
-                    meterFeatures.id, (err, features) => {
-                        if (features) {
-                            return features;
-                        }
-                        if (err) {
-                            console.error(err)
-                            return null;
-                        }
-                });
-                console.log(clusterMeterFeatures)
-            } else {
-                console.log('not a cluster')
-                // markerMeter.setLngLat([meterFeature.properties.LONGITUDE, meterFeature.properties.LATITUDE])
-                // markerMeter.addTo(map);
-                // mapMarkers.push(markerMeter)
+
+            const clusterSource = map.getSource('meters');
+            console.log(clusterSource)
+
+            for (let feature of meterFeatures) {
+                if (!feature.id) {
+                    console.count('meter')
+                    clusterMeterFeatures.push(feature)
+                } else {
+                    console.count('meter cluster')
+                    console.log(feature.id)
+                    console.log(feature.properties.point_count)
+                    clusterSource.getClusterLeaves(
+                        feature.id,
+                        feature.properties.point_count,
+                        0,
+                        (err, aFeatures) => {
+                            if (!aFeatures || err) {
+                                console.error(err)
+                                
+                            }
+                            // console.log(aFeatures)
+                            let leaf;
+                            for (leaf of aFeatures) {
+                                clusterMeterFeatures.push(leaf)
+                            }
+                    });
+                }
             }
+            console.log('features?', clusterMeterFeatures)
+
+            map.getSource('nearest-meter').setData({
+                type: 'FeatureCollection',
+                features: clusterMeterFeatures
+              });
+            
+            const getMeterCollection = map.getSource('nearest-meter')._data;
+            console.log('meter collection', getMeterCollection)
+
+            const result = findNearestMeter(lngLat, getMeterCollection)
+            console.log('result',result)
+            
+            if (result) {
+                markerMeter.setLngLat([result.properties.LONGITUDE, result.properties.LATITUDE])
+                markerMeter.addTo(map);
+                mapMarkers.push(markerMeter)
+            }
+            
+            
          })
        
 
