@@ -118,7 +118,7 @@ const Map = (props) => {
 
 
         const controls = new mapboxgl.NavigationControl()
-        map.addControl(controls, 'top-left')
+        map.addControl(controls, 'bottom-right')
 
         const geocoder = new MapboxGeocoder({
             accessToken: accessToken,
@@ -136,7 +136,7 @@ const Map = (props) => {
             console.log(geocodeMeterFeatures)
         })
         
-        map.addControl(geocoder, 'top-right')
+        map.addControl(geocoder, 'bottom-left')
 
         const geolocate = new mapboxgl.GeolocateControl({
             positionOptions: {
@@ -145,7 +145,7 @@ const Map = (props) => {
                 trackUserLocation: true
             });
         
-        map.addControl(geolocate, 'top-left');
+        map.addControl(geolocate, 'bottom-right');
 
         // geolocate.on('trackuserlocationstart', () => {
         //     console.log('tracked')
@@ -154,7 +154,7 @@ const Map = (props) => {
         geolocate.on('outofmaxbounds', () => {
             alert('This app is limited to the city of Boston.')
             map.removeControl(geolocate)
-            map.addControl(geolocate, 'top-left')
+            map.addControl(geolocate, 'bottom-right')
         })
 
         const scale = new mapboxgl.ScaleControl({
@@ -181,10 +181,10 @@ const Map = (props) => {
             markerUser.addTo(map);
             mapMarkers.push(markerUser)
         
-            map.flyTo({
-                center: lngLat,
-                zoom: 19
-            })
+            // map.flyTo({
+            //     center: lngLat,
+            //     zoom: 19
+            // })
             
             const wh = 300;
 
