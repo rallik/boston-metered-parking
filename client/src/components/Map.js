@@ -293,7 +293,7 @@ const Map = (props) => {
                     color: "#00FF00",
                 })
 
-                if (result) {
+                if (closestMeter) {
                     markerMeter.setLngLat([closestMeter.properties.LONGITUDE, closestMeter.properties.LATITUDE])
                     markerMeter.addTo(map);
                     // mapMarkers.push(markerMeter)
