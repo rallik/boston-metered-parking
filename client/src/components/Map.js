@@ -166,12 +166,13 @@ const Map = (props) => {
 
         let clusterMeterFeatures = [];
 
-
         map.on('dblclick', (e) => {
+            //Resets marker list, features-in-range array
             if (mapMarkers.length > 0) {
-                mapMarkers.forEach((m) => m.remove()) 
+                mapMarkers.forEach((m) => m.remove())
             }
 
+            //sets new loc, add click marker to map and array
             const lngLat = [e.lngLat.lng, e.lngLat.lat]
 
             const markerUser = new mapboxgl.Marker({
@@ -181,38 +182,42 @@ const Map = (props) => {
             markerUser.addTo(map);
             mapMarkers.push(markerUser)
         
-            // map.flyTo({
-            //     center: lngLat,
-            //     zoom: 19
-            // })
+            //set bounds for query
+            const wh = 200;
+            console.log(e.point)
+            console.log(e.point.x - wh, e.point.y - wh)
+            console.log(e.point.x + wh, e.point.y + wh)
+            const querybounds = [[e.point.x - wh / 2, e.point.y - wh / 2], [e.point.x + wh / 2, e.point.y + wh / 2]]
             
-            const wh = 300;
-
-            const querybounds = [[e.point.x - wh, e.point.y - wh], [e.point.x + wh, e.point.y + wh]]
-            const meterFeatures = map.queryRenderedFeatures({
-                layers: ['meterclusters'],
-                // filter: {}
-            })
-
+            //query features in range
+            const meterFeatures = map.queryRenderedFeatures(
+                querybounds,
+                { layers: ['meterclusters'] })
             if (!meterFeatures.length) {
                 console.log('nothin here');
             }
-            
             console.log('mf : ',meterFeatures)
             console.log('mfl : ',meterFeatures.length)
             console.log('mfeq : ',meterFeatures[0] == meterFeatures[1])
-
-            // const meterFeature = meterFeatures[0] || false;
             console.log(e)
             console.log(e.point)
-            // console.log(meterFeature)
 
+            //create marker for closest meter
             const markerMeter = new mapboxgl.Marker({
                 color: "#00FF00",
             })
 
+            //access data source
             const clusterSource = map.getSource('meters');
-            console.log(clusterSource)
+            console.log('clusterSource', clusterSource)
+
+
+            //need to do this in async way for blocking
+
+            // const getLeafFromCluster = () => {
+
+
+            // }
 
             for (let feature of meterFeatures) {
                 if (!feature.id) {
@@ -230,32 +235,56 @@ const Map = (props) => {
                             if (!aFeatures || err) {
                                 console.error(err)
                                 
+                            } else {
+                                // console.log(...aFeatures)
+                                clusterMeterFeatures.push(...aFeatures)
+                                // let leaf;
+                                // for (leaf of aFeatures) {
+                                //     // console.count('leaf')
+                                //     clusterMeterFeatures.push(leaf)
+                                // }
                             }
-                            // console.log(aFeatures)
-                            let leaf;
-                            for (leaf of aFeatures) {
-                                clusterMeterFeatures.push(leaf)
-                            }
+                            
                     });
                 }
             }
+
+            // return clusterMeterFeatures;
             console.log('features?', clusterMeterFeatures)
+
+
+            //add leafs in range to geojson object
 
             map.getSource('nearest-meter').setData({
                 type: 'FeatureCollection',
                 features: clusterMeterFeatures
-              });
+            });
             
-            const getMeterCollection = map.getSource('nearest-meter')._data;
+            // const getLeafGeoJson = async () => {
+            //     await getLeafFromCluster()
+            //     await addToGeojson()
+            // }
+            
+            // getLeafGeoJson();
+
+            let getMeterCollection, result;
+            getMeterCollection = map.getSource('nearest-meter')._data;
+            // console.log(getMeterCollection)
+            result = findNearestMeter(lngLat, getMeterCollection);
+            
+
+            
             console.log('meter collection', getMeterCollection)
 
-            const result = findNearestMeter(lngLat, getMeterCollection)
+
             console.log('result',result)
             
             if (result) {
                 markerMeter.setLngLat([result.properties.LONGITUDE, result.properties.LATITUDE])
                 markerMeter.addTo(map);
                 mapMarkers.push(markerMeter)
+            } else {
+                console.log('No result found')
             }
             
             
