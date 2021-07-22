@@ -15,7 +15,7 @@ const Map = (props) => {
     const mapContainer = useRef();
     const [lng, setLng] = useState(-71.0589);
     const [lat, setLat] = useState(42.3601);
-    const [zoom, setZoom] = useState(13);
+    const [zoom, setZoom] = useState(15);
 
     
 
@@ -164,14 +164,14 @@ const Map = (props) => {
 
         map.addControl(scale)
 
-        let clusterMeterFeatures = [];
-
 
         map.on('dblclick', (e) => {
+            //Resets marker list, features-in-range array
             if (mapMarkers.length > 0) {
-                mapMarkers.forEach((m) => m.remove()) 
+                mapMarkers.forEach((m) => m.remove())
             }
 
+            //sets new loc, add click marker to map and array
             const lngLat = [e.lngLat.lng, e.lngLat.lat]
 
             const markerUser = new mapboxgl.Marker({
@@ -181,83 +181,152 @@ const Map = (props) => {
             markerUser.addTo(map);
             mapMarkers.push(markerUser)
         
-            // map.flyTo({
-            //     center: lngLat,
-            //     zoom: 19
-            // })
+            //set bounds for query
+            const wh = 200;
+            console.log(e.point)
+            console.log(e.point.x - wh, e.point.y - wh)
+            console.log(e.point.x + wh, e.point.y + wh)
+            const querybounds = [[e.point.x - wh / 2, e.point.y - wh / 2], [e.point.x + wh / 2, e.point.y + wh / 2]]
             
-            const wh = 300;
-
-            const querybounds = [[e.point.x - wh, e.point.y - wh], [e.point.x + wh, e.point.y + wh]]
-            const meterFeatures = map.queryRenderedFeatures({
-                layers: ['meterclusters'],
-                // filter: {}
-            })
-
+            //query features in range
+            const meterFeatures = map.queryRenderedFeatures(
+                querybounds,
+                { layers: ['meterclusters'] })
             if (!meterFeatures.length) {
                 console.log('nothin here');
             }
-            
             console.log('mf : ',meterFeatures)
             console.log('mfl : ',meterFeatures.length)
             console.log('mfeq : ',meterFeatures[0] == meterFeatures[1])
-
-            // const meterFeature = meterFeatures[0] || false;
             console.log(e)
             console.log(e.point)
-            // console.log(meterFeature)
 
-            const markerMeter = new mapboxgl.Marker({
-                color: "#00FF00",
-            })
+            
 
-            const clusterSource = map.getSource('meters');
-            console.log(clusterSource)
+            
+            //need to do this in async way for blocking
+            const getLeafFromCluster = async (meterFeaturesInput, clusterSourceInput) => {
+                console.log('getLeafFromCluster')
+                return new Promise(resolve => {
+                    let clusterMeterFeatures = [];
+                    for (let feature of meterFeaturesInput) {
+                        if (!feature.id) {
+                            // console.count('meter')
+                            clusterMeterFeatures.push(feature)
+                        } else {
+                            console.count('meter cluster')
+                            console.log(feature.id)
+                            console.log(feature.properties.point_count)
+                            clusterSourceInput.getClusterLeaves(
+                                feature.id,
+                                feature.properties.point_count,
+                                0,
+                                (err, aFeatures) => {
+                                    if (!aFeatures || err) {
+                                        console.error(err)
+                                        
+                                    } else {
+                                        // console.log('aFeatures type', typeof aFeatures )
+                                        // console.log('aFeatures', { ...aFeatures })
+                                        console.count('aFeatures')
+                                        clusterMeterFeatures.push( ...aFeatures );
+                                        // let leaf;
+                                        // for await (leaf of aFeatures) {
+                                        //     // console.count('leaf')
+                                        //     clusterMeterFeatures.push(leaf)
+                                        // }
+                                    }
+                            });
+                        }
+                    }
+                    console.log('clusterMeterFeatures', clusterMeterFeatures)
+                    resolve(clusterMeterFeatures)
+                })
+            }
 
-            for (let feature of meterFeatures) {
-                if (!feature.id) {
-                    console.count('meter')
-                    clusterMeterFeatures.push(feature)
+            // const asyncFeaturesReturn = async (clusterSourceInput) => {
+            //     console.log('asyncFeaturesReturn')
+            //     return await getLeafFromCluster(clusterSourceInput);
+            // }
+
+            const getGeojsonData = async (map, clusterMeterFeaturesAsync) => {
+                //add leafs in range to geojson object
+                console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
+                await map.getSource('nearest-meter').setData({
+                    type: 'FeatureCollection',
+                    features: clusterMeterFeaturesAsync
+                });
+
+                return await map.getSource('nearest-meter')._data;
+                // const getMeterCollection = await map.getSource('nearest-meter')._data;
+                // console.log('getMeterCollection', getMeterCollection)
+                // const result = findNearestMeter(lngLat, getMeterCollection);
+                
+
+                
+                // console.log('meter collection', getMeterCollection)
+
+
+                // console.log('result',result)
+                
+                // if (result) {
+                //     markerMeter.setLngLat([result.properties.LONGITUDE, result.properties.LATITUDE])
+                //     markerMeter.addTo(map);
+                //     mapMarkers.push(markerMeter)
+                // } else {
+                //     console.log('No result found')
+                // }
+            }
+
+            const findNearest = async (meterCollection, lngLat) => {
+                console.log('getMeterCollection', meterCollection)
+                const result = await findNearestMeter(lngLat, meterCollection);                
+                console.log('meter collection', meterCollection)
+                console.log('result',result)
+                return result;
+                
+            }
+
+            const addToMap = async (closestMeter, map) => {
+                //create marker for closest meter
+                const markerMeter = new mapboxgl.Marker({
+                    color: "#00FF00",
+                })
+
+                if (closestMeter) {
+                    markerMeter.setLngLat([closestMeter.properties.LONGITUDE, closestMeter.properties.LATITUDE])
+                    markerMeter.addTo(map);
+                    // mapMarkers.push(markerMeter)
                 } else {
-                    console.count('meter cluster')
-                    console.log(feature.id)
-                    console.log(feature.properties.point_count)
-                    clusterSource.getClusterLeaves(
-                        feature.id,
-                        feature.properties.point_count,
-                        0,
-                        (err, aFeatures) => {
-                            if (!aFeatures || err) {
-                                console.error(err)
-                                
-                            }
-                            // console.log(aFeatures)
-                            let leaf;
-                            for (leaf of aFeatures) {
-                                clusterMeterFeatures.push(leaf)
-                            }
-                    });
+                    console.log('No result found')
                 }
             }
-            console.log('features?', clusterMeterFeatures)
+            
+            
 
-            map.getSource('nearest-meter').setData({
-                type: 'FeatureCollection',
-                features: clusterMeterFeatures
-              });
-            
-            const getMeterCollection = map.getSource('nearest-meter')._data;
-            console.log('meter collection', getMeterCollection)
+            //access data source, combine previous two functions
+            const clusterSource = map.getSource('meters');
+            console.log('clusterSource', clusterSource)
 
-            const result = findNearestMeter(lngLat, getMeterCollection)
-            console.log('result',result)
+            const initiateMeterProxSearch = async (meterFeaturesMainInput, clusterSourceMainInput, lngLatInput, mapInput) => {
+                console.log('meterFeaturesMainInput', meterFeaturesMainInput);
+                console.log('clusterSourceMainInput', clusterSourceMainInput);
+                const leafs = await getLeafFromCluster(meterFeaturesMainInput, clusterSourceMainInput);
+                console.log('leafs', leafs)
+                const geojson = await getGeojsonData(mapInput, leafs)
+                const result = await findNearest(geojson, lngLatInput);
+                await addToMap(result, mapInput);
+            } 
+
+            initiateMeterProxSearch(meterFeatures, clusterSource, lngLat, map);
             
-            if (result) {
-                markerMeter.setLngLat([result.properties.LONGITUDE, result.properties.LATITUDE])
-                markerMeter.addTo(map);
-                mapMarkers.push(markerMeter)
-            }
+
+            //needs to be part of async???
             
+            
+
+
+
             
          })
        
