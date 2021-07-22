@@ -1,7 +1,7 @@
 import { point, featureCollection } from '@turf/helpers'
 import nearestPoint from '@turf/nearest-point';
 
-const findNearestPoint = (userloc, meterfeatureset) => {
+const findNearestPoint = async (userloc, meterfeatureset) => {
     // console.log(meterfeatureset)
     const targetpoint = point(userloc)
 
