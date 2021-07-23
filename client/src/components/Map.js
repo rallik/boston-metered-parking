@@ -17,6 +17,121 @@ const Map = (props) => {
     const [lat, setLat] = useState(42.3601);
     const [zoom, setZoom] = useState(15);
 
+
+    //need to do this in async way for blocking
+    const getLeafFromCluster = (meterFeaturesInput, clusterSourceInput) => {
+        console.log('getLeafFromCluster')
+        let clusterMeterFeatures = [];
+        try {
+            for (let feature of meterFeaturesInput) {
+                if (!feature.id) {
+                    // console.count('meter')
+                    clusterMeterFeatures.push(feature)
+                } else {
+                    console.count('meter cluster')
+                    console.log(feature.id)
+                    console.log(feature.properties.point_count)
+                    clusterSourceInput.getClusterLeaves(
+                        feature.id,
+                        feature.properties.point_count,
+                        0,
+                        (err, aFeatures) => {
+                            if (!aFeatures || err) {
+                                console.error(err)
+                                
+                            } else {
+                                // console.log('aFeatures type', typeof aFeatures )
+                                // console.log('aFeatures', aFeatures)
+                                // console.count('aFeatures')
+                                clusterMeterFeatures.push( ...aFeatures );
+                                // let leaf;
+                                // for (leaf of aFeatures) {
+                                //     // console.count('leaf')
+                                //     clusterMeterFeatures.push(leaf)
+                                // }
+                            }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(err)
+        } finally {
+            console.log('clusterMeterFeatures', clusterMeterFeatures)
+            return clusterMeterFeatures;
+        }
+    }
+
+    // const asyncFeaturesReturn = async (clusterSourceInput) => {
+    //     console.log('asyncFeaturesReturn')
+    //     return await getLeafFromCluster(clusterSourceInput);
+    // }
+
+    const getGeojsonData = (map, clusterMeterFeaturesAsync) => {
+        //add leafs in range to geojson object
+        console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
+        map.getSource('nearest-meter').setData({
+            type: 'FeatureCollection',
+            features: clusterMeterFeaturesAsync
+        });
+        let geojsonReturn = map.getSource('nearest-meter')._data;
+        console.log('geojson features', geojsonReturn?.features)
+        console.log('geojson?', geojsonReturn)
+        return geojsonReturn;
+    }
+
+    const findNearest = (meterCollection, lngLat) => {
+        console.log('getMeterCollection', meterCollection)
+        let result;
+        if (meterCollection?.features.length > 0) {
+            result = findNearestMeter(lngLat, meterCollection);
+            console.log('result', result)
+            return result;
+        } else {
+            console.log('meter collection empty?', meterCollection)
+        }             
+    }
+
+    const addToMap = (closestMeter, map) => {
+        //create marker for closest meter
+        const markerMeter = new mapboxgl.Marker({
+            color: "#00FF00",
+        })
+
+        if (closestMeter) {
+            markerMeter.setLngLat([closestMeter.properties.LONGITUDE, closestMeter.properties.LATITUDE])
+            markerMeter.addTo(map);
+            // mapMarkers.push(markerMeter)
+        } else {
+            console.log('No result found')
+        }
+    }
+    
+    
+
+
+
+    const initiateMeterProxSearch = (meterFeaturesMainInput, lngLatInput, mapInput) => {
+        //access data source, combine previous two functions
+        const clusterSource = mapInput.getSource('meters');
+        console.log('clusterSource', clusterSource)
+        console.log('meterFeaturesMainInput', meterFeaturesMainInput);
+        let leafs;
+        try {
+            leafs = getLeafFromCluster(meterFeaturesMainInput, clusterSource);
+            console.log('leafs', leafs)
+        } catch (err) {
+            console.error(err)
+        } finally {
+            const geojson = getGeojsonData(mapInput, leafs)
+            console.log('finally geojson', geojson)
+            console.table('finally geojson table', geojson.features)
+            console.log('finally geojson type', typeof geojson)
+            const result = findNearest(geojson, lngLatInput);
+            addToMap(result, mapInput);
+        }
+        
+    } 
+
     
 
     useEffect(() => {
@@ -133,7 +248,8 @@ const Map = (props) => {
             if (!geocodeMeterFeatures.length) {
                 console.log('nothin here');
             }
-            console.log(geocodeMeterFeatures)
+
+            initiateMeterProxSearch(geocodeMeterFeatures, e.result.center, map);
         })
         
         map.addControl(geocoder, 'bottom-left')
@@ -182,7 +298,7 @@ const Map = (props) => {
             mapMarkers.push(markerUser)
         
             //set bounds for query
-            const wh = 200;
+            const wh = 300;
             console.log(e.point)
             console.log(e.point.x - wh, e.point.y - wh)
             console.log(e.point.x + wh, e.point.y + wh)
@@ -204,121 +320,9 @@ const Map = (props) => {
             
 
             
-            //need to do this in async way for blocking
-            const getLeafFromCluster = async (meterFeaturesInput, clusterSourceInput) => {
-                console.log('getLeafFromCluster')
-                return new Promise(resolve => {
-                    let clusterMeterFeatures = [];
-                    for (let feature of meterFeaturesInput) {
-                        if (!feature.id) {
-                            // console.count('meter')
-                            clusterMeterFeatures.push(feature)
-                        } else {
-                            console.count('meter cluster')
-                            console.log(feature.id)
-                            console.log(feature.properties.point_count)
-                            clusterSourceInput.getClusterLeaves(
-                                feature.id,
-                                feature.properties.point_count,
-                                0,
-                                (err, aFeatures) => {
-                                    if (!aFeatures || err) {
-                                        console.error(err)
-                                        
-                                    } else {
-                                        // console.log('aFeatures type', typeof aFeatures )
-                                        // console.log('aFeatures', { ...aFeatures })
-                                        console.count('aFeatures')
-                                        clusterMeterFeatures.push( ...aFeatures );
-                                        // let leaf;
-                                        // for await (leaf of aFeatures) {
-                                        //     // console.count('leaf')
-                                        //     clusterMeterFeatures.push(leaf)
-                                        // }
-                                    }
-                            });
-                        }
-                    }
-                    console.log('clusterMeterFeatures', clusterMeterFeatures)
-                    resolve(clusterMeterFeatures)
-                })
-            }
-
-            // const asyncFeaturesReturn = async (clusterSourceInput) => {
-            //     console.log('asyncFeaturesReturn')
-            //     return await getLeafFromCluster(clusterSourceInput);
-            // }
-
-            const getGeojsonData = async (map, clusterMeterFeaturesAsync) => {
-                //add leafs in range to geojson object
-                console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
-                await map.getSource('nearest-meter').setData({
-                    type: 'FeatureCollection',
-                    features: clusterMeterFeaturesAsync
-                });
-
-                return await map.getSource('nearest-meter')._data;
-                // const getMeterCollection = await map.getSource('nearest-meter')._data;
-                // console.log('getMeterCollection', getMeterCollection)
-                // const result = findNearestMeter(lngLat, getMeterCollection);
-                
-
-                
-                // console.log('meter collection', getMeterCollection)
-
-
-                // console.log('result',result)
-                
-                // if (result) {
-                //     markerMeter.setLngLat([result.properties.LONGITUDE, result.properties.LATITUDE])
-                //     markerMeter.addTo(map);
-                //     mapMarkers.push(markerMeter)
-                // } else {
-                //     console.log('No result found')
-                // }
-            }
-
-            const findNearest = async (meterCollection, lngLat) => {
-                console.log('getMeterCollection', meterCollection)
-                const result = await findNearestMeter(lngLat, meterCollection);                
-                console.log('meter collection', meterCollection)
-                console.log('result',result)
-                return result;
-                
-            }
-
-            const addToMap = async (closestMeter, map) => {
-                //create marker for closest meter
-                const markerMeter = new mapboxgl.Marker({
-                    color: "#00FF00",
-                })
-
-                if (closestMeter) {
-                    markerMeter.setLngLat([closestMeter.properties.LONGITUDE, closestMeter.properties.LATITUDE])
-                    markerMeter.addTo(map);
-                    // mapMarkers.push(markerMeter)
-                } else {
-                    console.log('No result found')
-                }
-            }
-            
             
 
-            //access data source, combine previous two functions
-            const clusterSource = map.getSource('meters');
-            console.log('clusterSource', clusterSource)
-
-            const initiateMeterProxSearch = async (meterFeaturesMainInput, clusterSourceMainInput, lngLatInput, mapInput) => {
-                console.log('meterFeaturesMainInput', meterFeaturesMainInput);
-                console.log('clusterSourceMainInput', clusterSourceMainInput);
-                const leafs = await getLeafFromCluster(meterFeaturesMainInput, clusterSourceMainInput);
-                console.log('leafs', leafs)
-                const geojson = await getGeojsonData(mapInput, leafs)
-                const result = await findNearest(geojson, lngLatInput);
-                await addToMap(result, mapInput);
-            } 
-
-            initiateMeterProxSearch(meterFeatures, clusterSource, lngLat, map);
+            initiateMeterProxSearch(meterFeatures, lngLat, map);
             
 
             //needs to be part of async???
