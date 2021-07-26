@@ -21,44 +21,53 @@ const Map = (props) => {
     //need to do this in async way for blocking
     const getLeafFromCluster = (meterFeaturesInput, clusterSourceInput) => {
         console.log('getLeafFromCluster')
+        let notClusters = [];
         let clusterMeterFeatures = [];
+        let clusterMeterFeaturesReturn;
         try {
             for (let feature of meterFeaturesInput) {
                 if (!feature.id) {
                     // console.count('meter')
-                    clusterMeterFeatures.push(feature)
+                    notClusters.push(feature)
                 } else {
-                    console.count('meter cluster')
-                    console.log(feature.id)
-                    console.log(feature.properties.point_count)
-                    clusterSourceInput.getClusterLeaves(
-                        feature.id,
-                        feature.properties.point_count,
-                        0,
-                        (err, aFeatures) => {
-                            if (!aFeatures || err) {
-                                console.error(err)
-                                
-                            } else {
-                                // console.log('aFeatures type', typeof aFeatures )
-                                // console.log('aFeatures', aFeatures)
-                                // console.count('aFeatures')
-                                clusterMeterFeatures.push( ...aFeatures );
-                                // let leaf;
-                                // for (leaf of aFeatures) {
-                                //     // console.count('leaf')
-                                //     clusterMeterFeatures.push(leaf)
-                                // }
-                            }
-                    });
+                    clusterMeterFeatures.push(feature)
                 }
+            }
+
+            console.log('clusterMeterFeatures', clusterMeterFeatures)
+
+
+            for (let clusters of clusterMeterFeatures) {
+                console.count('meter cluster')
+                console.log(clusters.id)
+                console.log(clusters.properties.point_count)
+                clusterSourceInput.getClusterLeaves(
+                    clusters.id,
+                    clusters.properties.point_count,
+                    0,
+                    (error, aFeatures) => {
+                        // if (!aFeatures || err) {
+                        //     console.error(err)
+                            
+                        // } else {
+                            // console.log('aFeatures type', typeof aFeatures )
+                            // console.log('aFeatures', aFeatures)
+                            // console.count('aFeatures')
+                            // clusterMeterFeatures.push( ...aFeatures );
+                            for (let leaf of aFeatures) {
+                                // console.log(leaf);
+                                notClusters.push(leaf);
+                            }
+                        // }
+                });
             }
         } catch (err) {
             console.error(err)
         } finally {
-            console.log('clusterMeterFeatures', clusterMeterFeatures)
-            return clusterMeterFeatures;
+            console.log('notClusters', notClusters)
+            clusterMeterFeaturesReturn = notClusters;
         }
+        return clusterMeterFeaturesReturn;
     }
 
     // const asyncFeaturesReturn = async (clusterSourceInput) => {
@@ -82,13 +91,13 @@ const Map = (props) => {
     const findNearest = (meterCollection, lngLat) => {
         console.log('getMeterCollection', meterCollection)
         let result;
-        if (meterCollection?.features.length > 0) {
+        // if (meterCollection?.features?.length > 0) {
             result = findNearestMeter(lngLat, meterCollection);
             console.log('result', result)
             return result;
-        } else {
-            console.log('meter collection empty?', meterCollection)
-        }             
+        // } else {
+            // console.log('meter collection empty?', meterCollection)
+        // }             
     }
 
     const addToMap = (closestMeter, map) => {
