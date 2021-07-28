@@ -10,8 +10,8 @@ const findNearestPoint = (userloc, meterfeatureset) => {
         console.log(meter)
     };
 
-    const nearest = 11;
-    // const nearest = nearestPoint(targetpoint, meterfeatureset)
+    // const nearest = 11;
+    const nearest = nearestPoint(targetpoint, meterfeatureset)
     return nearest;
 }
 

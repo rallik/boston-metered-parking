@@ -11,11 +11,47 @@ import '../site.scss';
 
 
 const Map = (props) => {
+
+    //Initialize state vars
+    console.log('props', props)
     const { workerClass, accessToken } = props;
     const mapContainer = useRef();
-    const [lng, setLng] = useState(-71.0589);
-    const [lat, setLat] = useState(42.3601);
+    const [lngLat, setLngLat] = useState([-71.0589, 42.3601]);
     const [zoom, setZoom] = useState(15);
+    const [markers, setMarkers] = useState([])
+
+
+    const createMap = () => {
+        const bounds = [
+            [-71.27, 42.2258],
+            [-70.8703, 42.4348]
+        ]
+
+        return new mapboxgl.Map({
+            container: mapContainer.current,
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [lngLat.lng, lngLat.lat],
+            zoom: zoom,
+            maxBounds: bounds,
+            doubleClickZoom: false
+        });
+    }
+
+
+    const getMarker = (markerType) => {
+        switch (markerType) {
+            case 'user':
+                return new mapboxgl.Marker({
+                    color: "#00d9ff",
+                });
+            case 'result':
+                return new mapboxgl.Marker({
+                    color: "#00FF00",
+                });
+            default:
+                break;
+        }
+    };
 
 
     //need to do this in async way for blocking
@@ -82,17 +118,19 @@ const Map = (props) => {
             type: 'FeatureCollection',
             features: clusterMeterFeaturesAsync
         });
+
+        //TODO Check here for delay on data access
         let geojsonReturn = map.getSource('nearest-meter')._data;
         console.log('geojson features', geojsonReturn?.features)
         console.log('geojson?', geojsonReturn)
         return geojsonReturn;
     }
 
-    const findNearest = (meterCollection, lngLat) => {
+    const findNearest = (meterCollection, userInputLngLat) => {
         console.log('getMeterCollection', meterCollection)
         let result;
         // if (meterCollection?.features?.length > 0) {
-            result = findNearestMeter(lngLat, meterCollection);
+            result = findNearestMeter(userInputLngLat, meterCollection);
             console.log('result', result)
             return result;
         // } else {
@@ -144,23 +182,7 @@ const Map = (props) => {
     
 
     useEffect(() => {
-        
-
-        //[-71.27, 42.2258],
-        //[-70.8703, 42.4348]
-        const bounds = [
-            [-71.27, 42.2258],
-            [-70.8703, 42.4348]
-        ]
-
-        const map = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/streets-v11',
-            center: [lng, lat],
-            zoom: zoom,
-            maxBounds: bounds,
-            doubleClickZoom: false
-        });
+        const map = createMap()
 
 
         map.on('load', () => {
@@ -238,9 +260,7 @@ const Map = (props) => {
             });
         })
 
-        const mapMarkers = [];
-
-
+        //*************************** TODO need to move this ***************************
         const controls = new mapboxgl.NavigationControl()
         map.addControl(controls, 'bottom-right')
 
@@ -257,6 +277,8 @@ const Map = (props) => {
             if (!geocodeMeterFeatures.length) {
                 console.log('nothin here');
             }
+
+            console.log(e.result.center);
 
             initiateMeterProxSearch(geocodeMeterFeatures, e.result.center, map);
         })
@@ -280,8 +302,14 @@ const Map = (props) => {
             alert('This app is limited to the city of Boston.')
             map.removeControl(geolocate)
             map.addControl(geolocate, 'bottom-right')
-        })
+        });
 
+        //Send this result to nearest meter function
+        geolocate.on('geolocate', (e) => {
+            console.log([e.coords.longitude, e.coords.latitude])
+        });
+
+        //Add scale to bottom left
         const scale = new mapboxgl.ScaleControl({
             maxWidth: 100,
             unit: 'imperial'
@@ -291,6 +319,7 @@ const Map = (props) => {
 
 
         map.on('dblclick', (e) => {
+            console.log(e)
             //Resets marker list, features-in-range array
             if (mapMarkers.length > 0) {
                 mapMarkers.forEach((m) => m.remove())
