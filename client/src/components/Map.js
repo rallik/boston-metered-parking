@@ -18,7 +18,7 @@ const Map = (props) => {
     const mapContainer = useRef();
     const [lngLat, setLngLat] = useState([-71.0589, 42.3601]);
     const [zoom, setZoom] = useState(15);
-    const [markers, setMarkers] = useState([])
+    const [markers, setMarkers] = useState([]);
 
 
     const createMap = () => {
@@ -30,15 +30,22 @@ const Map = (props) => {
         return new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/streets-v11',
-            center: [lngLat.lng, lngLat.lat],
+            center: lngLat,
             zoom: zoom,
             maxBounds: bounds,
             doubleClickZoom: false
         });
     }
 
+    const addGeocoder = () => {
 
-    const getMarker = (markerType) => {
+    };
+
+    const addGeolocaate = () => {
+        
+    }
+
+    const newMarker = (markerType) => {
         switch (markerType) {
             case 'user':
                 return new mapboxgl.Marker({
@@ -52,6 +59,27 @@ const Map = (props) => {
                 break;
         }
     };
+
+   
+
+    const addMarkerToMap = (new_marker, markerLngLat, map) => {
+        console.log('addmarkerstomap markers state', markers)
+        new_marker.setLngLat(markerLngLat)
+        new_marker.addTo(map);
+        setMarkers([new_marker, ...markers]);
+        console.log('addmarkerstomap markers state - STATE UPDATED', markers)
+    };
+
+    const clearMarkers = () => {
+        console.log('clearmarker markers state', markers)
+        if (markers.length > 0) {
+            markers.forEach((m) => m.remove())
+        }
+        setMarkers([]);
+        console.log('clearmarker markers state - CLEARED?', markers);
+    };
+
+
 
 
     //need to do this in async way for blocking
@@ -138,20 +166,7 @@ const Map = (props) => {
         // }             
     }
 
-    const addToMap = (closestMeter, map) => {
-        //create marker for closest meter
-        const markerMeter = new mapboxgl.Marker({
-            color: "#00FF00",
-        })
-
-        if (closestMeter) {
-            markerMeter.setLngLat([closestMeter.properties.LONGITUDE, closestMeter.properties.LATITUDE])
-            markerMeter.addTo(map);
-            // mapMarkers.push(markerMeter)
-        } else {
-            console.log('No result found')
-        }
-    }
+    
     
     
 
@@ -174,7 +189,11 @@ const Map = (props) => {
             console.table('finally geojson table', geojson.features)
             console.log('finally geojson type', typeof geojson)
             const result = findNearest(geojson, lngLatInput);
-            addToMap(result, mapInput);
+            if (result) {
+                let result_marker = newMarker('result');
+                let result_coords = [result.properties.LONGITUDE, result.properties.LATITUDE]
+                addMarkerToMap(result_marker, result_coords, mapInput);
+            }
         }
         
     } 
@@ -271,6 +290,7 @@ const Map = (props) => {
         })
 
         geocoder.on('result', (e) => {
+            clearMarkers();
             const geocodeMeterFeatures = map.queryRenderedFeatures({
                 layers: ['meterclusters']
             });
@@ -278,7 +298,11 @@ const Map = (props) => {
                 console.log('nothin here');
             }
 
-            console.log(e.result.center);
+            let geocoder_marker = newMarker('user');
+            let geocoder_coords = e.result.center;
+
+            addMarkerToMap(geocoder_marker, geocoder_coords, map);
+
 
             initiateMeterProxSearch(geocodeMeterFeatures, e.result.center, map);
         })
@@ -306,6 +330,7 @@ const Map = (props) => {
 
         //Send this result to nearest meter function
         geolocate.on('geolocate', (e) => {
+            clearMarkers();
             console.log([e.coords.longitude, e.coords.latitude])
         });
 
@@ -319,21 +344,24 @@ const Map = (props) => {
 
 
         map.on('dblclick', (e) => {
-            console.log(e)
+            console.log('dbclick',e)
             //Resets marker list, features-in-range array
-            if (mapMarkers.length > 0) {
-                mapMarkers.forEach((m) => m.remove())
-            }
+            clearMarkers();
 
             //sets new loc, add click marker to map and array
-            const lngLat = [e.lngLat.lng, e.lngLat.lat]
+            let double_click_marker = newMarker('user');
+            let double_click_coords = [e.lngLat.lng, e.lngLat.lat];
 
-            const markerUser = new mapboxgl.Marker({
-                color: "#76FF05",
-            })
-            markerUser.setLngLat([e.lngLat.lng, e.lngLat.lat])
-            markerUser.addTo(map);
-            mapMarkers.push(markerUser)
+            addMarkerToMap(double_click_marker, double_click_coords, map);
+
+            // const markerUser = new mapboxgl.Marker({
+            //     color: "#76FF05",
+            // })
+            // markerUser.setLngLat([e.lngLat.lng, e.lngLat.lat])
+            // markerUser.addTo(map);
+            // mapMarkers.push(markerUser)
+
+            
         
             //set bounds for query
             const wh = 300;
@@ -378,8 +406,7 @@ const Map = (props) => {
             const newzoom = map.getZoom()
             console.log(newcenter)
             console.log(newzoom)
-            setLat(newcenter.lat)
-            setLng(newcenter.lng)
+            setLngLat([newcenter.lng, newcenter.lat])
             setZoom(newzoom)
         })
 
