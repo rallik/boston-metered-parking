@@ -185,6 +185,7 @@ const Map = (props) => {
                 result_marker.addTo(mapInput);
                 // setMarkers(markers => [...markers, result_marker]);
                 markers = [...markers, result_marker]
+                return;
             } else {
     
                 // let tryagain = new mapboxgl.Popup()
@@ -211,7 +212,7 @@ const Map = (props) => {
 
             }
         }
-        
+        return;
     } 
 
     
