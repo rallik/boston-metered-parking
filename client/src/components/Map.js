@@ -37,13 +37,6 @@ const Map = (props) => {
         });
     };
 
-    const addGeocoder = () => {
-
-    };
-
-    const addGeolocaate = () => {
-        
-    };
 
     const newMarker = (markerType) => {
         switch (markerType) {
@@ -65,14 +58,6 @@ const Map = (props) => {
     };
 
    
-
-    // const addMarkerToMap = (new_marker, markerLngLat, map) => {
-    //     console.log('addmarkerstomap markers state', markers)
-    //     new_marker.setLngLat(markerLngLat)
-    //     new_marker.addTo(map);
-    //     setMarkers([new_marker, ...markers]);
-    //     console.log('addmarkerstomap markers state - STATE UPDATED', markers)
-    // };
 
     const clearMarkers = () => {
         let current_markers = markers;
@@ -102,51 +87,37 @@ const Map = (props) => {
         try {
             for (let feature of meterFeaturesInput) {
                 if (!feature.id) {
-                    // console.count('meter')
                     notClusters.push(feature)
                 } else {
                     areClusters.push(feature)
                 }
             }
 
-            console.log('notClusters', notClusters)
-            console.log('areClusters', areClusters)
+            // console.log('notClusters', notClusters)
+            // console.log('areClusters', areClusters)
 
 
 
             for (let clusters of areClusters) {
-                // console.count('meter cluster')
-                // console.log(clusters.id)
-                // console.log(clusters.properties.point_count)
                 clusterSourceInput.getClusterLeaves(
                     clusters.id,
                     clusters.properties.point_count,
                     0,
-                    (error, aFeatures) => {
-                        // if (!aFeatures || err) {
-                        //     console.error(err)
-                            
-                        // } else {
-                            // console.log('aFeatures type', typeof aFeatures )
-                            // console.log('aFeatures', aFeatures)
-                            // console.count('aFeatures')
-                            // notClusters.push( ...aFeatures );
-                            for (let leaf of aFeatures) {
-                                // console.log(leaf);
-                                metersFromClusters.push(leaf);
-                            }
-                        // }
+                    (err, aFeatures) => {
+                        for (let leaf of aFeatures) {
+                            metersFromClusters.push(leaf);
+                        }
                 });
             }
 
-            console.log('metersFromClusters', metersFromClusters)
+            // console.log('metersFromClusters', metersFromClusters)
         } catch (err) {
             console.error(err)
         } finally {
-            console.log('notClusters 2', notClusters)
-            console.log('metersFromClusters 2', metersFromClusters)
+            // console.log('notClusters 2', notClusters)
+            // console.log('metersFromClusters 2', metersFromClusters)
             meterFeaturesReturn = [...notClusters, ...metersFromClusters];
-            console.log('meterFeaturesReturn', meterFeaturesReturn)
+            // console.log('meterFeaturesReturn', meterFeaturesReturn)
         }
         return meterFeaturesReturn;
     }
@@ -158,7 +129,7 @@ const Map = (props) => {
 
     const getGeojsonData = (map, clusterMeterFeaturesAsync) => {
         //add leafs in range to geojson object
-        console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
+        // console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
         map.getSource('nearest-meter').setData({
             type: 'FeatureCollection',
             features: clusterMeterFeaturesAsync
@@ -166,8 +137,8 @@ const Map = (props) => {
 
         //TODO Check here for delay on data access
         let geojsonReturn = map.getSource('nearest-meter')._data;
-        console.log('geojson features', geojsonReturn?.features)
-        console.log('geojson?', geojsonReturn)
+        // console.log('geojson features', geojsonReturn?.features)
+        // console.log('geojson?', geojsonReturn)
         return geojsonReturn;
     }
 
@@ -192,8 +163,8 @@ const Map = (props) => {
     const initiateMeterProxSearch = (meterFeaturesMainInput, lngLatInput, mapInput) => {
         //access data source, combine previous two functions
         const clusterSource = mapInput.getSource('meters');
-        console.log('clusterSource', clusterSource)
-        console.log('meterFeaturesMainInput', meterFeaturesMainInput);
+        // console.log('clusterSource', clusterSource)
+        // console.log('meterFeaturesMainInput', meterFeaturesMainInput);
         let leafs;
         try {
             leafs = getLeafFromCluster(meterFeaturesMainInput, clusterSource);
@@ -214,6 +185,28 @@ const Map = (props) => {
                 result_marker.addTo(mapInput);
                 // setMarkers(markers => [...markers, result_marker]);
                 markers = [...markers, result_marker]
+            } else {
+    
+                // let tryagain = new mapboxgl.Popup()
+                // .setLngLat(lngLatInput)
+                // .setHTML('<h1>No meters Found, try again!</h1>')
+                // tryagain.addTo(mapInput);
+
+                mapInput.flyTo({
+                    center: lngLatInput,
+                    zoom: zoom + 4
+                });
+
+                let rerendered_features = mapInput.queryRenderedFeatures({
+                    layers: ['meterclusters']
+                });
+                if (!rerendered_features.length) {
+                    console.log('nothin here');
+                } else {
+                    initiateMeterProxSearch(rerendered_features, lngLatInput, mapInput)
+                }
+                
+
             }
         }
         
@@ -239,6 +232,7 @@ const Map = (props) => {
                 type: 'circle',
                 source: 'meters',
                 clusterMinPoints: 6,
+                clusterMaxZoom: 16,
                 clusterRadius: 200,
                 paint: {
                     'circle-color': [
@@ -311,8 +305,7 @@ const Map = (props) => {
         })
 
         geocoder.on('result', (e) => {
-            // clearMarkers(markers);
-            // setMarkers([])
+            clearMarkers();
             const geocodeMeterFeatures = map.queryRenderedFeatures({
                 layers: ['meterclusters']
             });
@@ -358,9 +351,26 @@ const Map = (props) => {
 
         //Send this result to nearest meter function
         geolocate.on('geolocate', (e) => {
-            // clearMarkers();
-            setMarkers([])
-            console.log([e.coords.longitude, e.coords.latitude]);
+            clearMarkers();
+
+            const geolocateMeterFeatures = map.queryRenderedFeatures({
+                layers: ['meterclusters']
+            });
+            if (!geolocateMeterFeatures.length) {
+                console.log('nothin here');
+            }
+            // console.log([e.coords.longitude, e.coords.latitude]);
+
+            let geolocate_marker = newMarker('user');
+            let geolocate_coords = [e.coords.longitude, e.coords.latitude];
+
+            geolocate_marker.setLngLat(geolocate_coords);
+            geolocate_marker.addTo(map);
+            markers = [geolocate_coords];
+
+
+            initiateMeterProxSearch(geolocateMeterFeatures, e.result.center, map);
+
         });
 
         //Add scale to bottom left
@@ -397,7 +407,7 @@ const Map = (props) => {
 
             
         
-            //set bounds for query
+            // set bounds for query
             const wh = 300;
             console.log(e.point)
             console.log(e.point.x - wh, e.point.y - wh)
