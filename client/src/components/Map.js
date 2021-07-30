@@ -195,16 +195,18 @@ const Map = (props) => {
                 mapInput.flyTo({
                     center: lngLatInput,
                     zoom: zoom + 4
-                });
+                }).on('idle', () => {
+                    let rerendered_features = mapInput.queryRenderedFeatures({
+                        layers: ['meterclusters']
+                    });
+                    if (!rerendered_features.length) {
+                        console.log('nothin here');
+                    } else {
+                        initiateMeterProxSearch(rerendered_features, lngLatInput, mapInput)
+                    }
+                })
 
-                let rerendered_features = mapInput.queryRenderedFeatures({
-                    layers: ['meterclusters']
-                });
-                if (!rerendered_features.length) {
-                    console.log('nothin here');
-                } else {
-                    initiateMeterProxSearch(rerendered_features, lngLatInput, mapInput)
-                }
+                
                 
 
             }
