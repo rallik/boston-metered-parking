@@ -11,54 +11,115 @@ import '../site.scss';
 
 
 const Map = (props) => {
+
+    //Initialize state vars
+    console.log('props', props)
     const { workerClass, accessToken } = props;
     const mapContainer = useRef();
-    const [lng, setLng] = useState(-71.0589);
-    const [lat, setLat] = useState(42.3601);
+    const [lngLat, setLngLat] = useState([-71.0589, 42.3601]);
     const [zoom, setZoom] = useState(15);
+    let markers = [];
+
+
+    const createMap = () => {
+        const bounds = [
+            [-71.27, 42.2258],
+            [-70.8703, 42.4348]
+        ]
+
+        return new mapboxgl.Map({
+            container: mapContainer.current,
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: lngLat,
+            zoom: zoom,
+            maxBounds: bounds,
+            doubleClickZoom: false
+        });
+    };
+
+
+    const newMarker = (markerType) => {
+        switch (markerType) {
+            case 'user':
+                return new mapboxgl.Marker({
+                    color: "#00d9ff",
+                    anchor: "center",
+                    offset: 0
+                });
+            case 'result':
+                return new mapboxgl.Marker({
+                    color: "#00FF00",
+                    anchor: "center",
+                    offset: 0
+                });
+            default:
+                break;
+        }
+    };
+
+   
+
+    const clearMarkers = () => {
+        let current_markers = markers;
+        if (current_markers.length > 0) {
+            console.table('clearmarker markers state', current_markers)
+
+            current_markers.forEach((m) => {
+                console.log(m)
+                m.remove()
+            })
+            markers = [];
+        console.table('clearmarker markers state - CLEARED?', current_markers);
+        }
+        
+    };
+
+
 
 
     //need to do this in async way for blocking
     const getLeafFromCluster = (meterFeaturesInput, clusterSourceInput) => {
         console.log('getLeafFromCluster')
-        let clusterMeterFeatures = [];
+        let notClusters = [];
+        let areClusters = [];
+        let metersFromClusters = [];
+        let meterFeaturesReturn;
         try {
             for (let feature of meterFeaturesInput) {
                 if (!feature.id) {
-                    // console.count('meter')
-                    clusterMeterFeatures.push(feature)
+                    notClusters.push(feature)
                 } else {
-                    console.count('meter cluster')
-                    console.log(feature.id)
-                    console.log(feature.properties.point_count)
-                    clusterSourceInput.getClusterLeaves(
-                        feature.id,
-                        feature.properties.point_count,
-                        0,
-                        (err, aFeatures) => {
-                            if (!aFeatures || err) {
-                                console.error(err)
-                                
-                            } else {
-                                // console.log('aFeatures type', typeof aFeatures )
-                                // console.log('aFeatures', aFeatures)
-                                // console.count('aFeatures')
-                                clusterMeterFeatures.push( ...aFeatures );
-                                // let leaf;
-                                // for (leaf of aFeatures) {
-                                //     // console.count('leaf')
-                                //     clusterMeterFeatures.push(leaf)
-                                // }
-                            }
-                    });
+                    areClusters.push(feature)
                 }
             }
+
+            // console.log('notClusters', notClusters)
+            // console.log('areClusters', areClusters)
+
+
+
+            for (let clusters of areClusters) {
+                clusterSourceInput.getClusterLeaves(
+                    clusters.id,
+                    clusters.properties.point_count,
+                    0,
+                    (err, aFeatures) => {
+                        for (let leaf of aFeatures) {
+                            metersFromClusters.push(leaf);
+                        }
+                });
+            }
+
+            // console.log('metersFromClusters', metersFromClusters)
         } catch (err) {
             console.error(err)
         } finally {
-            console.log('clusterMeterFeatures', clusterMeterFeatures)
-            return clusterMeterFeatures;
+            // console.log('notClusters 2', notClusters)
+            // console.log('metersFromClusters 2', metersFromClusters)
+            meterFeaturesReturn = [...notClusters, ...metersFromClusters];
+            // console.log('meterFeaturesReturn', meterFeaturesReturn)
         }
+        return meterFeaturesReturn;
     }
 
     // const asyncFeaturesReturn = async (clusterSourceInput) => {
@@ -68,43 +129,32 @@ const Map = (props) => {
 
     const getGeojsonData = (map, clusterMeterFeaturesAsync) => {
         //add leafs in range to geojson object
-        console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
+        // console.log('clusterMeterFeaturesAsync', clusterMeterFeaturesAsync)
         map.getSource('nearest-meter').setData({
             type: 'FeatureCollection',
             features: clusterMeterFeaturesAsync
         });
+
+        //TODO Check here for delay on data access
         let geojsonReturn = map.getSource('nearest-meter')._data;
-        console.log('geojson features', geojsonReturn?.features)
-        console.log('geojson?', geojsonReturn)
+        // console.log('geojson features', geojsonReturn?.features)
+        // console.log('geojson?', geojsonReturn)
         return geojsonReturn;
     }
 
-    const findNearest = (meterCollection, lngLat) => {
+    const findNearest = (meterCollection, userInputLngLat) => {
         console.log('getMeterCollection', meterCollection)
         let result;
-        if (meterCollection?.features.length > 0) {
-            result = findNearestMeter(lngLat, meterCollection);
+        // if (meterCollection?.features?.length > 0) {
+            result = findNearestMeter(userInputLngLat, meterCollection);
             console.log('result', result)
             return result;
-        } else {
-            console.log('meter collection empty?', meterCollection)
-        }             
+        // } else {
+            // console.log('meter collection empty?', meterCollection)
+        // }             
     }
 
-    const addToMap = (closestMeter, map) => {
-        //create marker for closest meter
-        const markerMeter = new mapboxgl.Marker({
-            color: "#00FF00",
-        })
-
-        if (closestMeter) {
-            markerMeter.setLngLat([closestMeter.properties.LONGITUDE, closestMeter.properties.LATITUDE])
-            markerMeter.addTo(map);
-            // mapMarkers.push(markerMeter)
-        } else {
-            console.log('No result found')
-        }
-    }
+    
     
     
 
@@ -113,8 +163,8 @@ const Map = (props) => {
     const initiateMeterProxSearch = (meterFeaturesMainInput, lngLatInput, mapInput) => {
         //access data source, combine previous two functions
         const clusterSource = mapInput.getSource('meters');
-        console.log('clusterSource', clusterSource)
-        console.log('meterFeaturesMainInput', meterFeaturesMainInput);
+        // console.log('clusterSource', clusterSource)
+        // console.log('meterFeaturesMainInput', meterFeaturesMainInput);
         let leafs;
         try {
             leafs = getLeafFromCluster(meterFeaturesMainInput, clusterSource);
@@ -127,31 +177,48 @@ const Map = (props) => {
             console.table('finally geojson table', geojson.features)
             console.log('finally geojson type', typeof geojson)
             const result = findNearest(geojson, lngLatInput);
-            addToMap(result, mapInput);
+            if (result) {
+                let result_marker = newMarker('result');
+                let result_coords = result.geometry.coordinates;
+                // addMarkerToMap(result_marker, result_coords, mapInput);
+                result_marker.setLngLat(result_coords);
+                result_marker.addTo(mapInput);
+                // setMarkers(markers => [...markers, result_marker]);
+                markers = [...markers, result_marker]
+                return;
+            } else {
+    
+                // let tryagain = new mapboxgl.Popup()
+                // .setLngLat(lngLatInput)
+                // .setHTML('<h1>No meters Found, try again!</h1>')
+                // tryagain.addTo(mapInput);
+
+                mapInput.flyTo({
+                    center: lngLatInput,
+                    zoom: zoom + 4
+                }).on('idle', () => {
+                    let rerendered_features = mapInput.queryRenderedFeatures({
+                        layers: ['meterclusters']
+                    });
+                    if (!rerendered_features.length) {
+                        console.log('nothin here');
+                    } else {
+                        initiateMeterProxSearch(rerendered_features, lngLatInput, mapInput)
+                    }
+                })
+
+                
+                
+
+            }
         }
-        
+        return;
     } 
 
     
 
     useEffect(() => {
-        
-
-        //[-71.27, 42.2258],
-        //[-70.8703, 42.4348]
-        const bounds = [
-            [-71.27, 42.2258],
-            [-70.8703, 42.4348]
-        ]
-
-        const map = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/streets-v11',
-            center: [lng, lat],
-            zoom: zoom,
-            maxBounds: bounds,
-            doubleClickZoom: false
-        });
+        const map = createMap();
 
 
         map.on('load', () => {
@@ -168,6 +235,7 @@ const Map = (props) => {
                 type: 'circle',
                 source: 'meters',
                 clusterMinPoints: 6,
+                clusterMaxZoom: 16,
                 clusterRadius: 200,
                 paint: {
                     'circle-color': [
@@ -196,9 +264,9 @@ const Map = (props) => {
                 type: 'symbol',
                 source: 'meters',
                 layout: {
-                'text-field': '{point_count_abbreviated}',
-                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                'text-size': 12
+                    'text-field': '{point_count_abbreviated}',
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-size': 12
                 }
             });
 
@@ -223,15 +291,13 @@ const Map = (props) => {
             map.addSource('nearest-meter', {
                 type: 'geojson',
                 data: {
-                'type': 'FeatureCollection',
-                'features': []
+                    'type': 'FeatureCollection',
+                    'features': []
                 }
             });
-        })
+        });
 
-        const mapMarkers = [];
-
-
+        //*************************** TODO need to move this ***************************
         const controls = new mapboxgl.NavigationControl()
         map.addControl(controls, 'bottom-right')
 
@@ -242,12 +308,25 @@ const Map = (props) => {
         })
 
         geocoder.on('result', (e) => {
+            clearMarkers();
             const geocodeMeterFeatures = map.queryRenderedFeatures({
                 layers: ['meterclusters']
             });
             if (!geocodeMeterFeatures.length) {
                 console.log('nothin here');
             }
+
+            let geocoder_marker = newMarker('user');
+            let geocoder_coords = e.result.center;
+
+            // addMarkerToMap(geocoder_marker, geocoder_coords, map);
+
+            geocoder_marker.setLngLat(geocoder_coords);
+            geocoder_marker.addTo(map);
+            // setMarkers([geocoder_marker]);
+            markers = [geocoder_marker];
+            
+
 
             initiateMeterProxSearch(geocodeMeterFeatures, e.result.center, map);
         })
@@ -271,8 +350,33 @@ const Map = (props) => {
             alert('This app is limited to the city of Boston.')
             map.removeControl(geolocate)
             map.addControl(geolocate, 'bottom-right')
-        })
+        });
 
+        //Send this result to nearest meter function
+        geolocate.on('geolocate', (e) => {
+            clearMarkers();
+
+            const geolocateMeterFeatures = map.queryRenderedFeatures({
+                layers: ['meterclusters']
+            });
+            if (!geolocateMeterFeatures.length) {
+                console.log('nothin here');
+            }
+            // console.log([e.coords.longitude, e.coords.latitude]);
+
+            let geolocate_marker = newMarker('user');
+            let geolocate_coords = [e.coords.longitude, e.coords.latitude];
+
+            geolocate_marker.setLngLat(geolocate_coords);
+            geolocate_marker.addTo(map);
+            markers = [geolocate_coords];
+
+
+            initiateMeterProxSearch(geolocateMeterFeatures, e.result.center, map);
+
+        });
+
+        //Add scale to bottom left
         const scale = new mapboxgl.ScaleControl({
             maxWidth: 100,
             unit: 'imperial'
@@ -282,22 +386,31 @@ const Map = (props) => {
 
 
         map.on('dblclick', (e) => {
+            console.log('dbclick',e)
             //Resets marker list, features-in-range array
-            if (mapMarkers.length > 0) {
-                mapMarkers.forEach((m) => m.remove())
-            }
+            clearMarkers();
+            // setMarkers([]);
 
             //sets new loc, add click marker to map and array
-            const lngLat = [e.lngLat.lng, e.lngLat.lat]
+            let double_click_marker = newMarker('user');
+            let double_click_coords = [e.lngLat.lng, e.lngLat.lat];
 
-            const markerUser = new mapboxgl.Marker({
-                color: "#76FF05",
-            })
-            markerUser.setLngLat([e.lngLat.lng, e.lngLat.lat])
-            markerUser.addTo(map);
-            mapMarkers.push(markerUser)
+            // addMarkerToMap(double_click_marker, double_click_coords, map);
+            double_click_marker.setLngLat(double_click_coords);
+            double_click_marker.addTo(map);
+            // setMarkers([double_click_marker]);
+            markers = [double_click_marker];
+
+            // const markerUser = new mapboxgl.Marker({
+            //     color: "#76FF05",
+            // })
+            // markerUser.setLngLat([e.lngLat.lng, e.lngLat.lat])
+            // markerUser.addTo(map);
+            // mapMarkers.push(markerUser)
+
+            
         
-            //set bounds for query
+            // set bounds for query
             const wh = 300;
             console.log(e.point)
             console.log(e.point.x - wh, e.point.y - wh)
@@ -322,7 +435,7 @@ const Map = (props) => {
             
             
 
-            initiateMeterProxSearch(meterFeatures, lngLat, map);
+            initiateMeterProxSearch(meterFeatures, double_click_coords, map);
             
 
             //needs to be part of async???
@@ -340,8 +453,7 @@ const Map = (props) => {
             const newzoom = map.getZoom()
             console.log(newcenter)
             console.log(newzoom)
-            setLat(newcenter.lat)
-            setLng(newcenter.lng)
+            setLngLat([newcenter.lng, newcenter.lat])
             setZoom(newzoom)
         })
 
